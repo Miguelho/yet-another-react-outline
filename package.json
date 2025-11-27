@@ -1,0 +1,97 @@
+{
+  "name": "yet-another-react-outline",
+  "displayName": "Yet Another React Outline",
+  "description": "Enhanced React component outline with JSX tree visualization",
+  "version": "0.0.1",
+  "publisher": "poleursus",
+  "icon":"icon.png",
+  "engines": {
+    "vscode": "^1.106.1"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:javascriptreact",
+    "onLanguage:typescriptreact"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [],
+    "configuration": {
+      "title": "React Outline",
+      "properties": {
+        "reactOutline.maxJSXDepth": {
+          "type": "number",
+          "default": 2,
+          "description": "Maximum depth for JSX tree in outline"
+        },
+        "reactOutline.showFragments": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show React Fragments in outline"
+        },
+        "reactOutline.showHooks": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show custom hooks in outline"
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "javascriptreact",
+        "aliases": [
+          "JavaScript React",
+          "jsx"
+        ],
+        "extensions": [
+          ".jsx"
+        ]
+      },
+      {
+        "id": "typescriptreact",
+        "aliases": [
+          "TypeScript React",
+          "tsx"
+        ],
+        "extensions": [
+          ".tsx"
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test",
+    "vsce:package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/babel__traverse": "^7.28.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.106.1",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.27.0",
+    "eslint": "^9.39.1",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.3"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.28.5",
+    "@babel/traverse": "^7.28.5"
+  }
+}
