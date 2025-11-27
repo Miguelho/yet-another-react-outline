@@ -3,6 +3,25 @@ import traverse, { NodePath } from '@babel/traverse';
 import * as t from '@babel/types';
 import * as vscode from 'vscode';
 
+// List of native React hooks
+const NATIVE_REACT_HOOKS = [
+  'useState',
+  'useEffect',
+  'useContext',
+  'useReducer',
+  'useCallback',
+  'useMemo',
+  'useRef',
+  'useImperativeHandle',
+  'useLayoutEffect',
+  'useDebugValue',
+  'useDeferredValue',
+  'useTransition',
+  'useId',
+  'useSyncExternalStore',
+  'useInsertionEffect',
+];
+
 // Main function to extract symbols from React document
 function getSymbolsFromDocument(
   document: vscode.TextDocument,
@@ -194,9 +213,15 @@ function buildJSXTree(
   }
 
   const showFragments = config.get<boolean>('showFragments', true);
+  const showNativeHooks = config.get<boolean>('showNativeHooks', true);
   const processedPaths = new Set<NodePath>();
 
   try {
+    // Add native React hooks as children if enabled
+    if (showNativeHooks) {
+      addNativeHooksSymbols(bodyPath, parentSymbol, document, log);
+    }
+
     bodyPath.traverse({
       JSXElement(jsxPath) {
         // Only process if not already processed and is top-level in component
@@ -219,6 +244,94 @@ function buildJSXTree(
     });
   } catch (error) {
     log.appendLine(`Error building JSX tree: ${error}`);
+  }
+}
+
+// Add native React hooks as symbols
+function addNativeHooksSymbols(
+  bodyPath: NodePath,
+  parentSymbol: vscode.DocumentSymbol,
+  document: vscode.TextDocument,
+  log: vscode.OutputChannel
+): void {
+  const hookCalls = new Map<string, Array<{ name: string; range: vscode.Range; varName?: string }>>();
+
+  try {
+    bodyPath.traverse({
+      CallExpression(callPath) {
+        const callee = callPath.node.callee;
+        let hookName: string | null = null;
+
+        // Direct hook call: useState()
+        if (callee.type === 'Identifier' && NATIVE_REACT_HOOKS.includes(callee.name)) {
+          hookName = callee.name;
+        }
+        // React.useState()
+        else if (
+          callee.type === 'MemberExpression' &&
+          callee.object.type === 'Identifier' &&
+          callee.object.name === 'React' &&
+          callee.property.type === 'Identifier' &&
+          NATIVE_REACT_HOOKS.includes(callee.property.name)
+        ) {
+          hookName = callee.property.name;
+        }
+
+        if (hookName) {
+          const range = astRangeToVsCodeRange(callPath.node.loc, document);
+
+          // Try to get the variable name if it's a destructuring assignment
+          let varName: string | undefined;
+          const parent = callPath.parent;
+
+          if (parent.type === 'VariableDeclarator' && parent.id) {
+            if (parent.id.type === 'Identifier') {
+              varName = parent.id.name;
+            } else if (parent.id.type === 'ArrayPattern') {
+              // For useState: const [state, setState] = useState()
+              const elements = parent.id.elements.filter((el): el is t.Identifier =>
+                el !== null && el.type === 'Identifier'
+              );
+              if (elements.length > 0) {
+                varName = elements.map(el => el.name).join(', ');
+              }
+            } else if (parent.id.type === 'ObjectPattern') {
+              // For useContext or other object destructuring
+              const props = parent.id.properties
+                .filter((prop): prop is t.ObjectProperty =>
+                  prop.type === 'ObjectProperty' && prop.value.type === 'Identifier'
+                )
+                .map(prop => (prop.value as t.Identifier).name);
+              if (props.length > 0) {
+                varName = props.join(', ');
+              }
+            }
+          }
+
+          if (!hookCalls.has(hookName)) {
+            hookCalls.set(hookName, []);
+          }
+          hookCalls.get(hookName)!.push({ name: hookName, range, varName });
+        }
+      },
+    });
+
+    // Add hook symbols grouped by hook type
+    for (const [hookName, calls] of hookCalls) {
+      for (const call of calls) {
+        const displayName = call.varName ? `${hookName} (${call.varName})` : hookName;
+        const hookSymbol = new vscode.DocumentSymbol(
+          displayName,
+          'Native Hook',
+          vscode.SymbolKind.Method,
+          call.range,
+          call.range
+        );
+        parentSymbol.children.push(hookSymbol);
+      }
+    }
+  } catch (error) {
+    log.appendLine(`Error detecting native hooks: ${error}`);
   }
 }
 

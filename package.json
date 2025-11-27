@@ -2,8 +2,9 @@
   "name": "yet-another-react-outline",
   "displayName": "Yet Another React Outline",
   "description": "Enhanced React component outline with JSX tree visualization",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "poleursus",
+  "repository":"https://github.com/Miguelho/yet-another-react-outline.git",
   "icon":"icon.png",
   "engines": {
     "vscode": "^1.106.1"
